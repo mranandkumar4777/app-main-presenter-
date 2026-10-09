@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRESENTER – Lower Thirds Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* OBS Browser Source page: fully transparent. Options in the URL:
+     ?scale=1.2   size multiplier      ?accent=%23e8b4a6   accent colour      ?pos=top   (default bottom)
+     ?demo=1      plays sample captions + a Bible reference so you can style/position it in OBS without Whisper */
+  :root{ --accent:#E8B4A6; --scale:1; --panel:rgba(14,20,34,.88); --panel2:rgba(26,36,58,.88); --text:#fff; --dim:#c3cde0;
+         --te:'Noto Sans Telugu','Nirmala UI','Gautami','Vani',sans-serif;
+         --en:'Segoe UI','Helvetica Neue',Arial,system-ui,sans-serif;
+         --ease:cubic-bezier(.19,.9,.22,1); }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:transparent;overflow:hidden;width:100vw;height:100vh;font-family:var(--en);color:var(--text);}
+  #stack{position:fixed;left:4.5vw;right:4.5vw;bottom:5.5vh;display:flex;flex-direction:column;align-items:flex-start;gap:1.4vh;font-size:calc(1vw * var(--scale));}
+  body.top #stack{bottom:auto;top:5.5vh;flex-direction:column-reverse;}
+  .lt{position:relative;display:none;max-width:100%;min-width:22em;filter:drop-shadow(0 .5em 1.1em rgba(0,0,0,.45));}
+  .lt.on{display:flex;}
+  /* ---- shared look: accent bar + glass panel ---- */
+  .lt .bar{width:.55em;align-self:stretch;background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#fff));border-radius:.3em 0 0 .3em;transform-origin:50% 100%;transform:scaleY(0);transition:transform .45s var(--ease);}
+  .lt .body{background:linear-gradient(100deg,var(--panel),var(--panel2));padding:.9em 1.5em 1em 1.3em;border-radius:0 .6em .6em 0;clip-path:inset(0 100% 0 0);transition:clip-path .75s var(--ease) .12s;min-width:0;}
+  .lt.in .bar{transform:scaleY(1);}
+  .lt.in .body{clip-path:inset(0 0 0 0);}
+  .lt.out .body{clip-path:inset(0 0 0 100%);transition:clip-path .5s cubic-bezier(.6,0,.9,.4);}
+  .lt.out .bar{transform:scaleY(0);transform-origin:50% 0;transition:transform .35s ease-in .25s;}
+  .lt .fx{opacity:0;transform:translateY(.45em);transition:opacity .45s ease,transform .55s var(--ease);}
+  .lt.in .fx{opacity:1;transform:none;}
+  .lt.in .fx.d1{transition-delay:.35s;} .lt.in .fx.d2{transition-delay:.47s;} .lt.in .fx.d3{transition-delay:.59s;}
+  .lt.out .fx{opacity:0;transition:opacity .25s;}
+  /* text that changes while visible cross-fades instead of popping */
+  .sw{transition:opacity .2s ease,transform .25s ease;} .sw.fade{opacity:0;transform:translateY(-.25em);}
+  [lang=te]{font-family:var(--te);line-height:1.55;}
+  /* ---- Bible reference card ---- */
+  #bible .tag{font-size:.8em;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:.35em;}
+  #bible .refs{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2em 1em;}
+  #bible .ref{font-size:2.5em;font-weight:800;line-height:1.15;letter-spacing:.005em;}
+  #bible .ref.te{font-size:2.3em;font-weight:700;color:#fff;}
+  #bible .divider{width:2.4em;height:.14em;background:var(--accent);opacity:.8;margin:.5em 0 .55em;border-radius:1em;}
+  #bible .verse{font-size:1.55em;line-height:1.4;color:var(--dim);max-width:46em;}
+  #bible .verse.te{font-size:1.5em;line-height:1.6;color:#e6ecf8;margin-top:.3em;}
+  #bible .verse:empty,#bible .divider.none{display:none;}
+  /* ---- caption box ---- */
+  #cap{width:min(100%,62em);}
+  #cap .body{flex:1;padding:.7em 1.4em .8em 1.2em;}
+  #capLines{display:flex;flex-direction:column;gap:.15em;}
+  .cl{font-size:2em;line-height:1.3;font-weight:600;max-height:5em;overflow:hidden;opacity:0;transform:translateY(.5em);transition:opacity .35s ease,transform .45s var(--ease),max-height .35s ease,margin .35s ease;}
+  .cl.show{opacity:1;transform:none;}
+  .cl.gone{opacity:0;max-height:0;margin:0;}
+  .cl.pending .t{opacity:.62;}
+  .cl .t{transition:opacity .3s ease;display:block;}
+  .cl .o{display:block;font-size:.58em;font-weight:500;color:var(--dim);margin-top:.1em;}
+  .cl.old{opacity:.7;}
+  body.demo::after{content:'DEMO';position:fixed;right:1vw;top:1vh;font:700 12px var(--en);color:#fff;background:#d33;padding:3px 8px;border-radius:4px;opacity:.85;}
+</style>
+</head>
+<body>
+<div id="stack">
+  <section id="bible" class="lt" aria-live="polite">
+    <div class="bar"></div>
+    <div class="body">
+      <div class="tag fx d1">Scripture &nbsp;·&nbsp; <span lang="te">లేఖనం</span></div>
+      <div class="refs fx d2">
+        <span class="ref en sw" id="bEnRef"></span>
+        <span class="ref te sw" id="bTeRef" lang="te"></span>
+      </div>
+      <div class="divider fx d2 none" id="bDiv"></div>
+      <div class="verse en sw fx d3" id="bEnVerse"></div>
+      <div class="verse te sw fx d3" id="bTeVerse" lang="te"></div>
+    </div>
+  </section>
+  <section id="cap" class="lt" aria-live="polite">
+    <div class="bar"></div>
+    <div class="body"><div id="capLines"></div></div>
+  </section>
+</div>
+<script>
+(function(){
+  'use strict';
+  var q = new URLSearchParams(location.search);
+  var root = document.documentElement;
+  if(q.get('accent')) root.style.setProperty('--accent', q.get('accent'));
+  if(parseFloat(q.get('scale')) > 0) root.style.setProperty('--scale', Math.min(3, Math.max(.4, parseFloat(q.get('scale')))));
+  if(q.get('pos') === 'top') document.body.classList.add('top');
+  var demo = q.get('demo') === '1'; if(demo) document.body.classList.add('demo');
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ------- generic show / hide with slide-in and slide-out ------- */
+  function show(el){
+    clearTimeout(el._hideT); clearTimeout(el._offT);
+    el.classList.remove('out'); el.classList.add('on');
+    if(!el.classList.contains('in')){ void el.offsetWidth; requestAnimationFrame(function(){ el.classList.add('in'); }); }
+  }
+  function hide(el){
+    if(!el.classList.contains('on')) return;
+    el.classList.remove('in'); el.classList.add('out');
+    el._offT = setTimeout(function(){ el.classList.remove('on','out'); if(el.id === 'cap') $('capLines').innerHTML = ''; }, 900);
+  }
+  function holdThenHide(el, ms){ clearTimeout(el._hideT); el._hideT = setTimeout(function(){ hide(el); }, ms); }
+
+  /* ------- text that updates seamlessly ------- */
+  function setText(el, text){
+    text = text || '';
+    if(el.textContent === text) return;
+    var visible = el.closest('.lt').classList.contains('in');
+    if(!visible || !el.textContent){ el.textContent = text; return; }
+    el.classList.add('fade');
+    setTimeout(function(){ el.textContent = text; el.classList.remove('fade'); }, 200);
+  }
+  function lang(el, text){ if(/[\u0C00-\u0C7F]/.test(text || '')) el.setAttribute('lang','te'); else el.removeAttribute('lang'); }
+
+  /* ------- Bible card ------- */
+  var bible = $('bible');
+  function showBible(m){
+    var wasOn = bible.classList.contains('in');
+    setText($('bEnRef'), m.en.ref); setText($('bTeRef'), m.te.ref);
+    setText($('bEnVerse'), m.en.text); setText($('bTeVerse'), m.te.text);
+    $('bDiv').classList.toggle('none', !(m.en.text || m.te.text));
+    show(bible); holdThenHide(bible, m.holdMs || 12000);
+    if(!wasOn) return;
+  }
+
+  /* ------- caption box: the last two phrases, newest at the bottom ------- */
+  var cap = $('cap'), lines = $('capLines'), MAXROWS = 2;
+  function rowFor(id){ return lines.querySelector('[data-id="' + id + '"]'); }
+  function paintRow(row, m, text){
+    var t = row.querySelector('.t'), o = row.querySelector('.o');
+    if(t.textContent !== text){ t.classList.add('fade-x'); t.textContent = text; }
+    lang(t, text);
+    if(m.showOriginal && m.original && m.original !== text){ if(!o){ o = document.createElement('span'); o.className = 'o'; row.appendChild(o); } o.textContent = m.original; lang(o, m.original); }
+  }
+  function addCaption(m){
+    var row = document.createElement('div'); row.className = 'cl' + (m.pending ? ' pending' : ''); row.dataset.id = m.id;
+    row._m = { original: m.text, showOriginal: m.showOriginal };
+    var t = document.createElement('span'); t.className = 't'; row.appendChild(t); lines.appendChild(row);
+    paintRow(row, row._m, m.text);
+    var rows = lines.querySelectorAll('.cl:not(.gone)');
+    for(var i = 0; i < rows.length - MAXROWS; i++){ (function(r){ r.classList.add('gone'); setTimeout(function(){ r.remove(); }, 450); })(rows[i]); }
+    Array.prototype.forEach.call(lines.querySelectorAll('.cl:not(.gone)'), function(r, k, all){ r.classList.toggle('old', k < all.length - 1); });
+    show(cap); void row.offsetWidth; requestAnimationFrame(function(){ row.classList.add('show'); });
+    holdThenHide(cap, m.holdMs || 5000);
+  }
+  function updateCaption(m){
+    var row = rowFor(m.id); if(!row) return;
+    row.classList.remove('pending');
+    if(m.failed || !m.text) return;                       // translation unavailable: the original text stays on screen
+    var t = row.querySelector('.t');
+    t.style.opacity = 0;
+    setTimeout(function(){ paintRow(row, row._m, m.text); t.style.opacity = ''; }, 180);
+  }
+
+  function handle(m){
+    if(!m || m.type !== 'lt-overlay') return;
+    if(m.kind === 'bible') showBible(m);
+    else if(m.kind === 'caption') addCaption(m);
+    else if(m.kind === 'caption-update') updateCaption(m);
+    else if(m.kind === 'hide'){ if(m.which === 'all' || m.which === 'bible') hide(bible); if(m.which === 'all' || m.which === 'caption') hide(cap); }
+  }
+
+  /* ------- live feed from the Presenter server ------- */
+  if(!demo){
+    var pin = window.__SERVER_PIN__ || '';
+    if(!pin){ document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;left:2vw;top:2vh;background:#000a;color:#fff;font:14px sans-serif;padding:8px 12px;border-radius:6px">Open this page on the computer running Presenter (http://localhost:8787/overlay).</div>'); }
+    else {
+      var es = new EventSource(location.origin + '/events?overlay=1&pin=' + encodeURIComponent(pin));
+      es.onmessage = function(ev){ try{ handle(JSON.parse(ev.data)); }catch(e){} };
+    }
+  } else {
+    /* sample show for styling */
+    var id = 100, steps = [
+      [300,  { kind:'caption', id:++id, text:'Good morning, church. Welcome to the service.', lang:'en', target:'', pending:false }],
+      [3200, { kind:'bible', en:{ref:'John 3:16', text:'For God so loved the world, that he gave his only begotten Son…'}, te:{ref:'యోహాను సువార్త 3:16', text:'దేవుడు లోకమును ఎంతో ప్రేమించెను…'}, holdMs:7000 }],
+      [4200, { kind:'caption', id:++id, text:'Please turn with me to the Gospel of John.', lang:'en', target:'te', pending:true, showOriginal:true, holdMs:6000 }],
+      [5600, { kind:'caption-update', id:id, text:'దయచేసి యోహాను సువార్తకు తిరగండి.', target:'te' }],
+      [7600, { kind:'caption', id:++id, text:'ప్రభువు మీకు తోడుగా ఉండును గాక.', lang:'te', target:'te', pending:false, holdMs:5000 }]
+    ];
+    function play(){ steps.forEach(function(s){ setTimeout(function(){ handle(Object.assign({ type:'lt-overlay' }, s[1])); }, s[0]); }); setTimeout(play, 20000); }
+    play();
+  }
+})();
+</script>
+</body>
+</html>
