@@ -1,17 +1,11 @@
 {
-  "name": "p1-app-pc",
-  "productName": "Presenter",
-  "version": "1.0.0",
-  "description": "PRESENTER - lyric / slide presenter with phone remote",
+  "name": "presenter",
+  "version": "1.0.4",
+  "description": "Desktop Presenter Application",
   "main": "main.js",
-  "author": "mranandkumar4777",
-  "license": "UNLICENSED",
-  "private": true,
   "scripts": {
     "start": "electron .",
-    "server": "node server.js",
-    "dist": "electron-builder",
-    "build": "echo \"Nothing to compile - packaging is done by electron-builder\""
+    "build": "electron-builder"
   },
   "devDependencies": {
     "electron": "^31.7.7",
@@ -48,14 +42,10 @@
       ],
       "category": "public.app-category.productivity"
     },
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "https://github.com/mranandkumar4777/p1-app-pc/releases/download/desktop-latest/"
-      }
-    ]
-  },
-  "dependencies": {
-    "electron-updater": "^6.3.9"
+    "publish": {
+      "provider": "github",
+      "owner": "mranandkumar4777",
+      "repo": "app-main-presenter-"
+    }
   }
 }
