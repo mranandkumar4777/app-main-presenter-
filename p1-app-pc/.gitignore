@@ -1,0 +1,7 @@
+node_modules/
+dist/
+mobile/node_modules/
+.DS_Store
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/

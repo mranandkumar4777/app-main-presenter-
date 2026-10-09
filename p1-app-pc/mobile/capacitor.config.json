@@ -1,0 +1,17 @@
+{
+  "appId": "com.p1.presenterremote",
+  "appName": "Presenter Remote",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false
+    }
+  }
+}
