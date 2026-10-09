@@ -9,8 +9,12 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes -PversionCode=<run number> -PversionName=<tag>; Android only installs an APK over the
         // installed one when versionCode is higher AND the signing key is the same.
-        versionCode (project.findProperty("versionCode") ?: "1").toInteger()
-        versionName (project.findProperty("versionName") ?: "1.0")
+        // (kept as plain variables: "versionCode (x).toInteger()" is parsed by Groovy as a method call on the
+        // result of versionCode(x), which is null -> "Value is null")
+        def vCode = (project.findProperty("versionCode") ?: "1").toString().trim()
+        def vName = (project.findProperty("versionName") ?: "1.0").toString().trim()
+        versionCode vCode.isInteger() ? vCode.toInteger() : 1
+        versionName vName ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
