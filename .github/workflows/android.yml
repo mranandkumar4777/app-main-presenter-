@@ -23,12 +23,16 @@ jobs:
       with:
         node-version: 18
 
-    - name: Build Mobile APK (Debug)
+    - name: Install Dependencies and Sync Capacitor
       run: |
+        npm install
         cd mobile
         npm install
         npx cap sync android
-        cd android
+
+    - name: Build Mobile APK (Debug)
+      run: |
+        cd mobile/android
         chmod +x gradlew
         ./gradlew clean assembleDebug
 
