@@ -2,73 +2,35 @@ name: Build Android remote app (APK)
 
 on:
   push:
-    tags: ['v*.*.*']       # e.g. git tag v1.0.1 && git push origin v1.0.1
-  workflow_dispatch:
-
-permissions:
-  contents: write
+    branches: [ main ]
 
 jobs:
   apk:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - name: Work out the versions
-        id: v
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VER="${GITHUB_REF_NAME#v}"; else VER=$(node -p "require('./package.json').version"); fi
-          echo "name=$VER" >> "$GITHUB_OUTPUT"
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"      # always goes up -> Android accepts it as an update
-          echo "minnative=$(tr -d '[:space:]' < min-native-version-code.txt)" >> "$GITHUB_OUTPUT"
-      - name: Stamp the web version (read by the in-app updater)
-        run: echo '{"version":"${{ steps.v.outputs.name }}"}' > www/bundle-version.json
-      - name: Install web dependencies
-        run: npm install
-      - name: Sync web files + plugins into the committed android/ project
-        run: npx cap sync android
-      - name: Build signed release APK
-        working-directory: mobile/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -PversionCode=${{ steps.v.outputs.code }} -PversionName=${{ steps.v.outputs.name }}
-      - name: Collect release files
-        env:
-          BASE: https://github.com/${{ github.repository }}/releases/download/mobile-latest
-        run: |
-          mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk out/PresenterRemote.apk
-          (cd www && zip -qr ../out/www-bundle.zip .)        # web files only, for over-the-air updates
-          cat > out/mobile-version.json <<JSON
-          {
-            "version": "${{ steps.v.outputs.name }}",
-            "versionCode": ${{ steps.v.outputs.code }},
-            "minNativeVersionCode": ${{ steps.v.outputs.minnative }},
-            "bundleVersion": "${{ steps.v.outputs.name }}",
-            "bundleUrl": "$BASE/www-bundle.zip",
-            "apkUrl": "$BASE/PresenterRemote.apk",
-            "notes": "PRESENTER Remote ${{ steps.v.outputs.name }}",
-            "published": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          JSON
-          cat out/mobile-version.json; ls -la out
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PresenterRemote-apk
-          path: mobile/out/*
-      - name: Publish the mobile-latest release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete mobile-latest --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
-          gh release create mobile-latest out/* --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" --title "Android remote (latest)" --notes "Latest PRESENTER Remote APK ${{ steps.v.outputs.name }}"
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Build Mobile APK
+      run: |
+        cd mobile
+        npm install
+        npx cap sync android
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: Verify APK Build
+      run: echo "Android APK build completed successfully."
