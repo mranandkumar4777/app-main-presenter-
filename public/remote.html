@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PRESENTER Remote</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#131c30; --panel2:#1a2540; --border:#2a3858; --text:#e8eefc; --dim:#8b9bbd;
+    --gold:#ffb02e; --gold-d:#e8780a; --live:#ff3b4e; --ok:#19e08a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;}
+  body{touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+  button,input{font:inherit;color:inherit;}
+  button{border:1px solid var(--border);background:var(--panel2);border-radius:14px;padding:12px;min-height:52px;
+    font-weight:600;cursor:pointer;transition:transform .06s,background .15s;}
+  button:active{transform:scale(.96);background:#243257;}
+  button:disabled{opacity:.4;}
+  .hidden{display:none!important;}
+
+  #app{display:flex;flex-direction:column;height:100%;height:100dvh;
+    padding-top:env(safe-area-inset-top);}
+  header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);}
+  header h1{font-size:16px;margin:0;flex:1;}
+  .dot{width:10px;height:10px;border-radius:50%;background:#777;flex:none;}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok);}
+  .dot.wait{background:var(--gold);animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.3;}}
+  header .st{font-size:12px;color:var(--dim);}
+  header button{min-height:36px;padding:4px 10px;font-size:13px;border-radius:10px;}
+
+  main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 16px;}
+  nav{display:flex;border-top:1px solid var(--border);background:var(--panel);padding-bottom:env(safe-area-inset-bottom);}
+  nav button{flex:1;border:0;border-radius:0;background:none;color:var(--dim);min-height:58px;font-size:12px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;}
+  nav button .ic{font-size:20px;}
+  nav button.act{color:var(--gold);}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:12px;}
+  .card .lbl{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;}
+  .card .txt{white-space:pre-wrap;font-size:17px;max-height:26vh;overflow-y:auto;min-height:2.6em;}
+  .card .sub{font-size:12px;color:var(--dim);margin-top:4px;}
+  .card.live{border-color:var(--live);}
+  .card.live .lbl{color:#ff8a96;}
+  .card.live.blank .txt{opacity:.35;font-style:italic;}
+  .tag{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:99px;background:var(--live);color:#fff;letter-spacing:.08em;}
+
+  .golive{width:100%;min-height:72px;font-size:22px;font-weight:800;color:#2a1600;border:1px solid #ffc766;
+    background:linear-gradient(#ffb02e,var(--gold-d));box-shadow:0 0 22px #ff9a1f55;margin-bottom:12px;}
+  .golive:active{background:linear-gradient(#ffc04d,#f08a10);}
+  .grid{display:grid;gap:10px;margin-bottom:12px;}
+  .g2{grid-template-columns:1fr 1fr;} .g4{grid-template-columns:repeat(4,1fr);}
+  .big{min-height:84px;font-size:20px;}
+  .small{min-height:56px;font-size:13px;}
+  .blank-btn{width:100%;min-height:58px;}
+  .blank-btn.on{background:#5a1220;border-color:var(--live);color:#ffd0d6;}
+
+  /* library */
+  .search{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel);margin-bottom:10px;user-select:text;-webkit-user-select:text;}
+  .item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin-bottom:8px;min-height:56px;}
+  .item .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item .n{font-size:12px;color:var(--dim);font-weight:500;}
+  .item.cur{border-color:var(--gold);}
+  .bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .bar button{min-height:44px;padding:6px 14px;}
+  .bar .t{font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .slide{display:flex;gap:10px;align-items:stretch;background:var(--panel);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+  .slide.prev{border-color:var(--gold);} .slide.live{border-color:var(--live);}
+  .slide .body{flex:1;padding:10px 12px;min-width:0;cursor:pointer;}
+  .slide .no{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center;margin-bottom:3px;}
+  .slide .no b{font-size:10px;padding:1px 7px;border-radius:99px;color:#111;}
+  .slide .no b.p{background:var(--gold);} .slide .no b.l{background:var(--live);color:#fff;}
+  .slide .tx{white-space:pre-wrap;font-size:15px;max-height:7.5em;overflow:hidden;}
+  .slide .go{width:74px;border:0;border-left:1px solid var(--border);border-radius:0;background:#2a1600;color:var(--gold);font-size:13px;}
+  .empty{color:var(--dim);text-align:center;padding:30px 10px;}
+  .ws{display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:8px;text-align:left;}
+  .ws.act{border-color:var(--gold);color:var(--gold);}
+
+  /* connect */
+  #connect{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;justify-content:center;
+    padding:24px;padding-top:calc(24px + env(safe-area-inset-top));gap:12px;overflow-y:auto;}
+  #connect h2{margin:0;font-size:26px;} #connect p{color:var(--dim);margin:0;font-size:14px;}
+  #connect input{padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--panel);width:100%;user-select:text;-webkit-user-select:text;}
+  #connect .err{color:#ff8a96;font-size:14px;min-height:1.3em;}
+  #connect .go{margin:0;}
+  .slide .ed{width:56px;border:0;border-left:1px solid var(--border);border-radius:0;background:var(--panel2);font-size:18px;}
+  .pe{float:right;min-height:34px;padding:2px 12px;font-size:13px;border-radius:10px;margin:-4px 0 0 8px;}
+  #editor{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;gap:10px;padding:14px;
+    padding-top:calc(14px + env(safe-area-inset-top));padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+  #editor h2{margin:0;font-size:17px;} #editor .note{font-size:13px;color:var(--dim);}
+  #eText{flex:1;width:100%;resize:none;padding:14px;border-radius:14px;border:1px solid var(--gold);background:var(--panel);font:inherit;font-size:18px;line-height:1.4;color:inherit;user-select:text;-webkit-user-select:text;}
+  #editor .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  #toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000c;color:#fff;
+    padding:8px 16px;border-radius:99px;font-size:13px;z-index:30;pointer-events:none;}
+
+  /* mode picker + password step (shown right after the connection is made) */
+  #modeModal{position:fixed;inset:0;z-index:40;background:rgba(5,9,18,.88);display:flex;align-items:center;justify-content:center;padding:20px;
+    padding-top:calc(20px + env(safe-area-inset-top));padding-bottom:calc(20px + env(safe-area-inset-bottom));overflow-y:auto;}
+  .mm-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 70px #000a;}
+  .mm-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ok);letter-spacing:.04em;}
+  .mm-card h2{margin:0;font-size:22px;} .mm-card p{margin:0;color:var(--dim);font-size:14px;}
+  .mm-opt{display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:12px;text-align:left;padding:14px;min-height:78px;align-items:center;}
+  .mm-opt .ic{grid-row:1 / span 2;font-size:30px;text-align:center;}
+  .mm-opt b{font-size:17px;} .mm-opt small{color:var(--dim);font-weight:500;font-size:12.5px;line-height:1.3;}
+  .mm-opt:active{border-color:var(--gold);}
+  #mmPw{width:100%;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--bg);user-select:text;-webkit-user-select:text;}
+  #mmErr{color:#ff8a96;font-size:14px;min-height:1.3em;}
+  .mm-link{background:none;border:0;color:var(--dim);min-height:40px;font-weight:600;}
+  /* Main Stage Display mode: the live slide, full screen, read-only */
+  #stage{position:fixed;inset:0;z-index:15;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  #stageText{color:#fff;text-align:center;white-space:pre-wrap;word-break:break-word;line-height:1.18;font-weight:700;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stageMenu{position:absolute;top:calc(8px + env(safe-area-inset-top));right:8px;min-height:40px;width:44px;padding:0;border-radius:99px;background:#ffffff14;border:0;color:#fff;opacity:.35;}
+  #stageBar{position:absolute;top:calc(56px + env(safe-area-inset-top));right:8px;display:flex;flex-direction:column;gap:8px;background:#000d;border:1px solid var(--border);border-radius:14px;padding:10px;}
+  #stageBar button{min-height:44px;padding:6px 14px;font-size:14px;}
+  .aiGrid{display:grid;grid-template-columns:1fr;gap:12px;}
+  @media (min-width:560px){ .aiGrid{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start;} }
+  .aiGrid input[type=text],.aiGrid input[type=search],.aiGrid textarea{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0D0C09;color:var(--text);font-size:15px;margin-top:6px;font-family:inherit;}
+  .aiGrid textarea{min-height:72px;}
+  .aiBest{border-color:#8B7CF6;}
+  .aiSlide{white-space:pre-wrap;font-size:15px;line-height:1.45;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:#0D0C09;}
+  .aiRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div id="app" class="hidden">
+  <header>
+    <span id="dot" class="dot"></span>
+    <h1>PRESENTER Remote</h1>
+    <span id="st" class="st">offline</span>
+    <button id="discBtn" type="button">Switch mode</button>
+  </header>
+  <main id="main"></main>
+  <nav>
+    <button data-tab="control" class="act"><span class="ic">🎛</span>Control</button>
+    <button data-tab="library"><span class="ic">🎵</span>Library</button>
+    <button data-tab="workspace"><span class="ic">🧩</span>Workspace</button>
+    <button data-tab="identify"><span class="ic">🎤</span>Identify</button>
+  </nav>
+</div>
+
+<div id="connect" class="hidden">
+  <h2>Connect to Presenter</h2>
+  <p>Open Presenter on the computer, tap <b>📱 Phone</b> and scan the QR code — it connects straight away. Or type the computer's address below. No password is needed to connect; you enter it after choosing a mode.</p>
+  <input id="hostIn" placeholder="Computer address, e.g. 192.168.1.20" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false">
+  <div id="cerr" class="err"></div>
+  <button id="connBtn" class="golive go" type="button">Connect</button>
+</div>
+<div id="stage" class="hidden">
+  <div id="stageText"></div>
+  <button id="stageMenu" type="button" aria-label="Menu">⋯</button>
+  <div id="stageBar" class="hidden"><button id="stFull" type="button">⛶ Full screen</button><button id="stSwitch" type="button">Switch mode</button></div>
+</div>
+<div id="modeModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="mmTitle">
+  <div class="mm-card">
+    <div class="mm-status"><span class="dot on"></span><span id="mmConn">Connected to Presenter</span></div>
+    <div id="mmStep1">
+      <h2 id="mmTitle">Choose a mode</h2>
+      <p id="mmNote">You are connected. Pick how this phone will be used — you will be asked for the password next.</p>
+      <div style="height:6px"></div>
+      <button class="mm-opt" type="button" data-mode="remote"><span class="ic">🎛</span><b>Remote Control</b><small>Go live, next / previous, library, workspaces, song identify</small></button>
+      <div style="height:8px"></div>
+      <button class="mm-opt" type="button" data-mode="stage"><span class="ic">📺</span><b>Main Stage Display</b><small>Show the live slide full screen on this phone (view only)</small></button>
+    </div>
+    <div id="mmStep2" class="hidden">
+      <h2 id="mmTitle2">Password</h2>
+      <p id="mmSub">Enter the Presenter password to continue.</p>
+      <div style="height:6px"></div>
+      <input id="mmPw" type="password" placeholder="Password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+      <div id="mmErr"></div>
+      <button id="mmGo" class="golive" type="button" style="margin:0;min-height:60px;font-size:19px;">Unlock ▸</button>
+      <button id="mmBack" class="mm-link" type="button">← Choose a different mode</button>
+    </div>
+  </div>
+</div>
+<div id="editor" class="hidden">
+  <h2 id="eTitle">Edit slide</h2>
+  <div class="note">Preview only. The Live screen does not change until you press Go live.</div>
+  <textarea id="eText" spellcheck="false" autocapitalize="sentences"></textarea>
+  <div class="row"><button id="eUndo" type="button">Undo changes</button><button id="eDone" type="button">Done</button></div>
+  <button id="eLive" class="golive" type="button" style="margin:0;min-height:60px;font-size:19px;">GO LIVE ▸</button>
+</div>
+<div id="toast" class="hidden"></div>
+
+<script>
+(function(){
+  'use strict';
+  const $ = (id)=>document.getElementById(id);
+  const LS = (k,v)=>{ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } };
+
+  // ---------- state ----------
+  const S = { items:[], selectedItemId:null, slides:[], preview:{}, live:{}, workspace:null };
+  let tab = 'control', browsing = null, filter = '';
+  let ws = null, pingT = null, rtt = 0;
+  let origin = '', token = '', mode = '', es = null, connected = false, retryTimer = null, candidates = [], candIdx = 0, gotAny = false;
+
+  const deviceId = LS('pr_dev') || (()=>{ const v = Math.random().toString(36).slice(2,10); LS('pr_dev', v); return v; })();
+  const deviceName = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android phone' : 'Phone';
+
+  // ---------- small helpers ----------
+  function h(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+  function buzz(){ try{ navigator.vibrate && navigator.vibrate(12); }catch(e){} }
+  let toastT = null;
+  function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.add('hidden'), 1800); }
+  function setStatus(kind, text){ $('dot').className = 'dot ' + kind; $('st').textContent = text; }
+  function normHost(v){
+    v = (v || '').trim(); if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'http://' + v;
+    try{ const u = new URL(v); if(!u.port) u.port = '8787'; return u.origin; }catch(e){ return ''; }
+  }
+
+  // ---------- sending commands ----------
+  function send(type, extra, quiet){
+    if(!origin || !token || mode !== 'remote') return Promise.resolve(false);
+    if(!quiet) buzz();
+    if(ws && ws.readyState === 1){            // WebSocket: no HTTP round trip per tap
+      try{ ws.send(JSON.stringify(Object.assign({ t:'msg', from:'remote', type:type }, extra || {}))); return Promise.resolve(true); }catch(e){}
+    }
+    const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 4000);
+    return fetch(origin + '/api/send', {
+      method:'POST', headers:{'Content-Type':'application/json'}, signal: ctl.signal,
+      body: JSON.stringify(Object.assign({ from:'remote', type:type, token:token, device:deviceId, name:deviceName }, extra || {}))
+    }).then(r=>{ if(!r.ok){ if(r.status === 401 || r.status === 403) leaveMode('Your session ended. Choose a mode and sign in again.'); else toast('Send failed'); return false; } return true; })
+      .catch(()=>{ toast('Could not reach Presenter'); return false; })
+      .finally(()=>clearTimeout(to));
+  }
+
+  // ---------- live connection (Server-Sent Events) ----------
+  function closeES(){
+    if(es){ try{ es.close(); }catch(e){} es = null; }
+    if(ws){ const w = ws; ws = null; clearInterval(pingT); try{ w.close(); }catch(e){} }
+  }
+  const aiPending = {};
+  function resolveAi(m){ const p = aiPending[m.id]; if(p){ delete aiPending[m.id]; clearTimeout(p.t); p.res(m.result || { ok:false, error:'Empty reply.' }); } }
+  function tryWS(o, fallback){
+    let ok = false, done = false, w;
+    const fb = ()=>{ if(done) return; done = true; fallback(); };
+    try{ w = new WebSocket(o.replace(/^http/i, 'ws') + '/ws?token=' + encodeURIComponent(token) + '&device=' + encodeURIComponent(deviceId) + '&name=' + encodeURIComponent(deviceName)); }catch(e){ return fb(); }
+    w.binaryType = 'arraybuffer';
+    const guard = setTimeout(()=>{ if(!ok){ try{ w.close(); }catch(e){} fb(); } }, 3500);
+    w.onopen = ()=>{
+      ok = true; done = true; clearTimeout(guard); ws = w; origin = o; connected = true; gotAny = true;
+      LS('pr_host', o);
+      hideConnect(); setStatus('on', 'connected'); send('requestState', null, true); keepAwake();
+      clearInterval(pingT);
+      pingT = setInterval(()=>{ try{ if(w.readyState === 1) w.send(JSON.stringify({ t:'ping', ts:performance.now() })); }catch(e){} }, 4000);
+    };
+    w.onmessage = (ev)=>{
+      if(typeof ev.data !== 'string') return;
+      let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+      if(m && m.from === 'server'){
+        if(m.type === 'pong'){ rtt = Math.round(performance.now() - m.ts); setStatus('on', 'connected · ' + rtt + ' ms'); }
+        else if(m.type === 'aiResult') resolveAi(m);
+        return;
+      }
+      onMessage(ev);
+    };
+    w.onclose = ()=>{
+      clearTimeout(guard);
+      if(!ok){ fb(); return; }
+      if(ws === w){ ws = null; clearInterval(pingT); connected = false; setStatus('wait', 'reconnecting…'); scheduleRetry(); }
+    };
+    w.onerror = ()=>{};
+  }
+  function startConnect(cands){
+    candidates = cands.filter(Boolean); candIdx = 0; gotAny = false; connected = false;
+    clearTimeout(retryTimer); tryCandidate();
+  }
+  function tryCandidate(){
+    closeES();
+    if(candIdx >= candidates.length){
+      setStatus('', 'offline');
+      if(!gotAny){ verifySession().then(v=>{ if(v === 'bad') leaveMode('Your session ended. Choose a mode and sign in again.'); else showConnect('Could not connect. Check that Presenter is open and that this phone is on the same Wi-Fi (or Tailscale).'); }); }
+      else scheduleRetry();
+      return;
+    }
+    const o = candidates[candIdx];
+    setStatus('wait', 'connecting…');
+    if(window.WebSocket) return tryWS(o, ()=> trySSE(o));
+    trySSE(o);
+  }
+  function trySSE(o){
+    let opened = false;
+    const url = o + '/events?token=' + encodeURIComponent(token) + '&device=' + encodeURIComponent(deviceId) + '&name=' + encodeURIComponent(deviceName);
+    let e;
+    try{ e = new EventSource(url); }catch(err){ candIdx++; return tryCandidate(); }
+    es = e;
+    const guard = setTimeout(()=>{ if(!opened && es === e){ candIdx++; tryCandidate(); } }, 4500);
+    e.onopen = ()=>{
+      opened = true; clearTimeout(guard); origin = o; connected = true; gotAny = true;
+      LS('pr_host', o);
+      hideConnect(); setStatus('on', 'connected'); send('requestState'); keepAwake();
+    };
+    e.onmessage = onMessage;
+    e.onerror = ()=>{
+      clearTimeout(guard);
+      if(!opened){ if(es === e){ candIdx++; tryCandidate(); } return; }       // never got in: try next address
+      connected = false; setStatus('wait', 'reconnecting…');
+      if(e.readyState === EventSource.CLOSED){ closeES(); scheduleRetry(); }    // otherwise the browser retries by itself
+    };
+  }
+  function scheduleRetry(){ clearTimeout(retryTimer); retryTimer = setTimeout(()=>{ if(token) startConnect([origin].concat(candidates)); }, 2500); }
+  function onMessage(ev){
+    let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+    if(!m || m.from !== 'control' || m.type !== 'state') return;
+    if(mode === 'stage'){ renderStage(m); return; }          // Main Stage Display only gets the live slide + its style
+    S.items = m.items || []; S.selectedItemId = m.selectedItemId || null; S.slides = m.slides || [];
+    S.preview = m.preview || {}; S.live = m.live || {}; S.workspace = m.workspace || null;
+    if(ed && S.preview.itemId === ed.itemId && S.preview.slideIndex === ed.idx && document.activeElement !== $('eText') && !edBusy && $('eText').value !== S.preview.text) $('eText').value = S.preview.text;
+    render();
+  }
+  async function keepAwake(){ try{ if(navigator.wakeLock) await navigator.wakeLock.request('screen'); }catch(e){} }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden || !token) return;
+    if((!ws || ws.readyState !== 1) && (!es || es.readyState === EventSource.CLOSED)) startConnect([origin].concat(candidates)); else send('requestState');
+    keepAwake();
+  });
+
+  // ---------- connect screen ----------
+  function showConnect(err){ $('cerr').textContent = err || ''; $('connect').classList.remove('hidden'); $('connBtn').disabled = false; $('connBtn').textContent = 'Connect'; }
+  function hideConnect(){ $('connect').classList.add('hidden'); }
+  $('connBtn').addEventListener('click', ()=>{
+    const host = normHost($('hostIn').value) || (location.protocol.startsWith('http') ? location.origin : '');
+    if(!host){ $('cerr').textContent = 'Enter the computer\'s address.'; return; }
+    $('cerr').textContent = ''; $('connBtn').disabled = true; $('connBtn').textContent = 'Connecting…';
+    lobbyConnect([host], null);
+  });
+  $('discBtn').addEventListener('click', ()=> leaveMode(''));
+
+  // ---------- step 1: connect (no password) ----------
+  function timedFetch(url, opt, ms){
+    const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), ms || 3500);
+    return fetch(url, Object.assign({ cache:'no-store', signal:ctl.signal }, opt || {})).finally(()=>clearTimeout(t));
+  }
+  async function lobbyConnect(cands, sess){
+    cands = cands.filter(Boolean);
+    for(let i = 0; i < cands.length; i++){
+      try{
+        const r = await timedFetch(cands[i] + '/api/hello?device=' + encodeURIComponent(deviceId) + '&name=' + encodeURIComponent(deviceName));
+        if(r.status === 403){ showConnect('This phone was removed from Presenter on the computer.'); return; }
+        const j = await r.json().catch(()=>null);
+        if(r.ok && j && j.ok){
+          origin = cands[i]; candidates = cands; LS('pr_host', origin);
+          if(sess && sess.host === origin && sess.token){          // same session, page was just reloaded / reopened
+            const v = await verifySession(sess.token);
+            if(v === 'ok'){ hideConnect(); enterMode(sess.mode, sess.token); return; }
+            try{ sessionStorage.removeItem('pr_sess'); }catch(e){}
+          }
+          hideConnect(); showModeModal(''); return;
+        }
+      }catch(e){}
+    }
+    showConnect('Could not reach the computer. Check that Presenter is open and the address is right, and that this phone is on the same Wi-Fi (or Tailscale).');
+  }
+  async function verifySession(tk){
+    try{
+      const r = await timedFetch(origin + '/api/session?token=' + encodeURIComponent(tk || token), null, 3500);
+      const j = await r.json(); return j && j.ok ? 'ok' : 'bad';
+    }catch(e){ return 'down'; }
+  }
+
+  // ---------- step 2: choose a mode, then the password ----------
+  let pendingMode = '';
+  const MODE_NAME = { remote:'Remote Control', stage:'Main Stage Display' };
+  function showModeModal(note){
+    closeES(); clearTimeout(retryTimer); connected = false; setStatus('', 'offline');
+    $('app').classList.add('hidden'); $('stage').classList.add('hidden');
+    $('mmConn').textContent = 'Connected to Presenter · ' + origin.replace(/^https?:\/\//, '');
+    $('mmNote').textContent = note || 'You are connected. Pick how this phone will be used — you will be asked for the password next.';
+    $('mmStep1').classList.remove('hidden'); $('mmStep2').classList.add('hidden');
+    $('mmPw').value = ''; $('mmErr').textContent = ''; pendingMode = '';
+    $('modeModal').classList.remove('hidden');
+  }
+  document.querySelectorAll('.mm-opt').forEach(b=>b.addEventListener('click', ()=>{
+    pendingMode = b.dataset.mode; buzz();
+    $('mmTitle2').textContent = MODE_NAME[pendingMode];
+    $('mmSub').textContent = 'Enter the Presenter password to open ' + MODE_NAME[pendingMode] + '.';
+    $('mmErr').textContent = ''; $('mmPw').value = '';
+    $('mmStep1').classList.add('hidden'); $('mmStep2').classList.remove('hidden');
+    setTimeout(()=>$('mmPw').focus(), 60);
+  }));
+  $('mmBack').addEventListener('click', ()=>{ $('mmStep2').classList.add('hidden'); $('mmStep1').classList.remove('hidden'); $('mmPw').value = ''; $('mmErr').textContent = ''; });
+  async function submitPassword(){
+    const pw = $('mmPw').value;
+    if(!pw){ $('mmErr').textContent = 'Enter the password.'; return; }
+    if(!pendingMode) return;
+    $('mmGo').disabled = true; $('mmGo').textContent = 'Checking…'; $('mmErr').textContent = '';
+    try{
+      const r = await timedFetch(origin + '/api/auth', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ device:deviceId, name:deviceName, mode:pendingMode, password:pw }) }, 6000);
+      const j = await r.json().catch(()=>({}));
+      if(r.ok && j.ok){
+        $('mmPw').value = '';
+        try{ sessionStorage.setItem('pr_sess', JSON.stringify({ host:origin, mode:j.mode, token:j.token })); }catch(e){}
+        $('modeModal').classList.add('hidden');
+        enterMode(j.mode, j.token);
+        if(j.mode === 'stage') goFullscreen();
+      } else {
+        $('mmErr').textContent = r.status === 401 ? 'Wrong password. Try again.' : (j.message || 'Could not sign in.');
+        $('mmPw').select();
+      }
+    }catch(e){ $('mmErr').textContent = 'Could not reach the computer.'; }
+    $('mmGo').disabled = false; $('mmGo').textContent = 'Unlock ▸';
+  }
+  $('mmGo').addEventListener('click', submitPassword);
+  $('mmPw').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') submitPassword(); });
+
+  function enterMode(m, tk){
+    mode = m; token = tk;
+    $('modeModal').classList.add('hidden');
+    $('app').classList.toggle('hidden', m !== 'remote');
+    $('stage').classList.toggle('hidden', m !== 'stage');
+    if(m === 'stage'){ $('stageBar').classList.add('hidden'); renderStage(null); }
+    else render();
+    startConnect([origin].concat(candidates.filter(c=>c !== origin)));
+  }
+  function leaveMode(note){
+    const tk = token;
+    if(tk && origin){ try{ fetch(origin + '/api/logout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token:tk }) }).catch(()=>{}); }catch(e){} }
+    try{ sessionStorage.removeItem('pr_sess'); }catch(e){}
+    token = ''; mode = ''; ed = null; $('editor').classList.add('hidden');
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+    if(origin) showModeModal(note); else showConnect(note);
+  }
+
+  // ---------- Main Stage Display (view only) ----------
+  let stageLast = null;
+  function fitStage(){
+    const t = $('stageText'), box = $('stage'); if(box.classList.contains('hidden')) return;
+    const maxW = box.clientWidth * 0.92, maxH = box.clientHeight * 0.86;
+    t.style.maxWidth = maxW + 'px';
+    let lo = 14, hi = Math.min(box.clientWidth, box.clientHeight) * 0.6;
+    for(let i = 0; i < 12; i++){ const mid = (lo + hi) / 2; t.style.fontSize = mid + 'px'; if(t.scrollHeight <= maxH && t.scrollWidth <= maxW) lo = mid; else hi = mid; }
+    t.style.fontSize = lo + 'px';
+  }
+  function renderStage(m){
+    if(m) stageLast = m;
+    const st = (stageLast && stageLast.style) || {}, live = (stageLast && stageLast.live) || {};
+    const t = $('stageText');
+    t.style.fontFamily = st.font || ''; t.style.color = st.color || '#fff'; t.style.textShadow = st.shadow || '';
+    t.textContent = (!live.blank && live.text) ? live.text : '';
+    fitStage();
+  }
+  function goFullscreen(){ try{ const el = document.documentElement; if(!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(()=>{}); }catch(e){} }
+  window.addEventListener('resize', fitStage); window.addEventListener('orientationchange', ()=>setTimeout(fitStage, 200));
+  $('stageMenu').addEventListener('click', ()=> $('stageBar').classList.toggle('hidden'));
+  $('stFull').addEventListener('click', ()=>{ goFullscreen(); $('stageBar').classList.add('hidden'); });
+  $('stSwitch').addEventListener('click', ()=> leaveMode(''));
+
+  // ---------- rendering ----------
+  document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>{ tab = b.dataset.tab; render(); }));
+  function render(){
+    document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('act', b.dataset.tab === tab));
+    const keep = $('main').scrollTop, main = $('main'); main.textContent = '';
+    if(tab === 'control') renderControl(main);
+    else if(tab === 'library') renderLibrary(main);
+    else if(tab === 'identify') renderIdentify(main);
+    else renderWorkspace(main);
+    if(tab !== 'control') main.scrollTop = keep;
+  }
+
+  function renderControl(main){
+    const live = S.live, prev = S.preview;
+    const lc = h('div', 'card live' + (live.blank ? ' blank' : ''));
+    const ll = h('div', 'lbl', 'Live'); if(live.blank) ll.appendChild(h('span', 'tag', 'BLANK'));
+    lc.appendChild(ll); lc.appendChild(h('div', 'txt', live.blank ? '(screen is blank)' : (live.text || '—')));
+    main.appendChild(lc);
+
+    const pc = h('div', 'card'); const pl = h('div', 'lbl', 'Preview — next up'); pc.appendChild(pl);
+    if(prev.itemId && prev.slideIndex >= 0 && S.items.some(i=>i.id === prev.itemId)){
+      const pe = h('button', 'pe', '✏ Edit'); pe.addEventListener('click', ()=>openEditor(prev.itemId, prev.slideIndex, prev.text || '')); pl.appendChild(pe);
+    }
+    pc.appendChild(h('div', 'txt', prev.text || '—'));
+    if(prev.subtitle) pc.appendChild(h('div', 'sub', prev.subtitle));
+    main.appendChild(pc);
+
+    const go = h('button', 'golive', 'GO LIVE ▸'); go.addEventListener('click', ()=>send('golive')); main.appendChild(go);
+
+    const g1 = h('div', 'grid g2');
+    const pv = h('button', 'big', '◀ Previous'); pv.addEventListener('click', ()=>send('prev'));
+    const nx = h('button', 'big', 'Next ▶');     nx.addEventListener('click', ()=>send('next'));
+    g1.appendChild(pv); g1.appendChild(nx); main.appendChild(g1);
+
+    const g2 = h('div', 'grid g4');
+    [['▲ Line up','lineUp'], ['▼ Line down','lineDown'], ['⏮ Home','home'], ['⏭ End','end']].forEach(([t, c])=>{
+      const b = h('button', 'small', t); b.addEventListener('click', ()=>send(c)); g2.appendChild(b);
+    });
+    main.appendChild(g2);
+
+    const bl = h('button', 'blank-btn' + (live.blank ? ' on' : ''), live.blank ? '🖥 Screen is black — tap to restore' : '🖥 Blank / Black screen');
+    bl.addEventListener('click', ()=>send('blank')); main.appendChild(bl);
+  }
+
+
+  // ---------- Identify (two columns): left = input, right = AI output ----------
+  // The phone never holds API keys or model settings: it streams audio / text to the computer, which calls the AI.
+  // The identified track, the similar-song list and every generated deck are cached here, so "Back to Songs" is instant.
+  let ident = { busy:false, msg:'', best:null, list:[], mode:'songs', deck:null, addOpen:false, q:'', prompt:'', cache:{} };
+  try{ const sv = JSON.parse(sessionStorage.getItem('pr_ident') || 'null'); if(sv) Object.assign(ident, sv, { busy:false }); }catch(e){}
+  function saveIdent(){ try{ sessionStorage.setItem('pr_ident', JSON.stringify({ msg:ident.msg, best:ident.best, list:ident.list, mode:ident.mode, deck:ident.deck, q:ident.q, prompt:ident.prompt, cache:ident.cache })); }catch(e){} }
+
+  // 8-bit mu-law halves the upload; the computer turns it back into WAV.
+  function mulaw(x){
+    let s = Math.round(Math.max(-1, Math.min(1, x)) * 32767), sign = 0;
+    if(s < 0){ s = -s; sign = 0x80; } if(s > 32635) s = 32635; s += 0x84;
+    let exp = 7; for(let m = 0x4000; (s & m) === 0 && exp > 0; m >>= 1) exp--;
+    return (~(sign | (exp << 4) | ((s >> (exp + 3)) & 15))) & 255;
+  }
+  function wavB64(bytesMulaw){   // fallback path (no WebSocket): plain 16-bit WAV over HTTP
+    const n = bytesMulaw.length, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+    const dec = (u8)=>{ u8 = ~u8 & 255; const sg = u8 & 0x80, e = (u8 >> 4) & 7, m = u8 & 15; let s = ((m << 3) + 0x84) << e; s -= 0x84; return sg ? -s : s; };
+    const w = (o, s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,16000,true); v.setUint32(28,32000,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+    for(let i=0;i<n;i++) v.setInt16(44+i*2, dec(bytesMulaw[i]), true);
+    const b = new Uint8Array(buf); let s = ''; for(let i=0;i<b.length;i+=0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i+0x8000));
+    return btoa(s);
+  }
+  function aiWait(id){ return new Promise((res)=>{ aiPending[id] = { res:res, t:setTimeout(()=>{ delete aiPending[id]; res({ ok:false, error:'The computer took too long to answer.' }); }, 45000) }; }); }
+  async function postAi(path, body){
+    const ctl = new AbortController(), to = setTimeout(()=>ctl.abort(), 45000);
+    try{
+      const r = await fetch(origin + path, { method:'POST', headers:{'Content-Type':'application/json'}, signal: ctl.signal,
+        body: JSON.stringify(Object.assign({ token:token, device:deviceId, name:deviceName }, body)) });
+      return await r.json().catch(()=>({ ok:false, error:'Bad reply from the computer.' }));
+    }catch(e){ return { ok:false, error:'Could not reach Presenter.' }; }
+    finally{ clearTimeout(to); }
+  }
+  // Records `sec` seconds; if a WebSocket is open the audio is streamed while recording, so only the last
+  // ~100 ms is left to upload when you stop.
+  async function captureAndIdentify(sec){
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:{ channelCount:1, echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+    const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
+    const src = ctx.createMediaStreamSource(stream), node = ctx.createScriptProcessor(4096, 1, 1);
+    const ratio = ctx.sampleRate / 16000, all = [];
+    const id = 'i' + Math.random().toString(36).slice(2, 9), live = !!(ws && ws.readyState === 1);
+    if(live) ws.send(JSON.stringify({ t:'aiStart', id:id, rate:16000, hint: ident.prompt }));
+    let acc = 0, cnt = 0, pos = 0;
+    node.onaudioprocess = (ev)=>{
+      const d = ev.inputBuffer.getChannelData(0), out = [];
+      for(let i=0;i<d.length;i++){ acc += d[i]; cnt++; pos += 1; if(pos >= ratio){ out.push(mulaw(acc / cnt)); acc = 0; cnt = 0; pos -= ratio; } }
+      if(!out.length) return;
+      const u8 = new Uint8Array(out); all.push(u8);
+      if(live && ws && ws.readyState === 1) ws.send(u8);
+    };
+    src.connect(node); node.connect(ctx.destination);
+    if(ctx.state === 'suspended') await ctx.resume();
+    await new Promise(r=>setTimeout(r, sec*1000));
+    stream.getTracks().forEach(t=>t.stop()); try{ node.disconnect(); ctx.close(); }catch(e){}
+    ident.msg = 'Identifying…'; render();
+    if(live && ws && ws.readyState === 1){ const p = aiWait(id); ws.send(JSON.stringify({ t:'aiEnd', id:id })); return p; }
+    const n = all.reduce((a,c)=>a+c.length,0), bytes = new Uint8Array(n); let k = 0; all.forEach(c=>{ bytes.set(c,k); k += c.length; });
+    return postAi('/api/ai/identify', { audio: wavB64(bytes), mime:'audio/wav', hint: ident.prompt });
+  }
+  function fetchLyrics(query, artist){
+    if(ws && ws.readyState === 1){ const id = 'l' + Math.random().toString(36).slice(2, 9), p = aiWait(id); ws.send(JSON.stringify({ t:'aiLyrics', id:id, query:query, artist:artist || '', prompt:ident.prompt })); return p; }
+    return postAi('/api/ai/lyrics', { query:query, artist:artist || '', prompt:ident.prompt });
+  }
+  const ckey = (q)=> String(q||'').toLowerCase().replace(/\s+/g, ' ').trim();
+  async function openSong(query, artist){
+    if(ident.busy) return;
+    const k = ckey(query);
+    if(ident.cache[k]){ ident.deck = ident.cache[k]; ident.mode = 'deck'; ident.addOpen = false; saveIdent(); render(); return; }   // cached: no AI call
+    ident.busy = true; ident.msg = 'Getting slides for “' + query.slice(0, 50) + '”…'; render();
+    const r = await fetchLyrics(query, artist);
+    ident.busy = false;
+    if(!r.ok){ ident.msg = r.error || 'Could not get slides.'; }
+    else if(!r.found){ ident.msg = r.note || 'The AI could not provide reliable text for that song.'; }
+    else {
+      const deck = { title:r.title, artist:r.artist, complete:r.complete, note:r.note, slides:r.slides.slice() };
+      ident.cache[k] = deck; ident.deck = deck; ident.mode = 'deck'; ident.addOpen = false; ident.msg = '';
+    }
+    saveIdent(); if(tab === 'identify') render();
+  }
+  async function runIdentify(sec){
+    if(ident.busy) return;
+    ident.busy = true; ident.msg = '🎤 Listening…'; render();
+    try{
+      const r = await captureAndIdentify(sec);
+      if(!r.ok){ ident.msg = r.error || 'Could not identify.'; }
+      else {
+        ident.best = (r.best && r.best.title) ? r.best : null; ident.list = r.similar || []; ident.mode = 'songs';
+        ident.msg = ident.best ? (ident.best.confidence < 50 ? 'Low confidence — pick the right one.' : '') : 'No match. Try again a little closer.';
+      }
+    }catch(e){
+      ident.msg = (e && e.name === 'NotAllowedError') ? 'Microphone blocked.' : (window.isSecureContext ? 'Could not record.' : 'The browser blocks the microphone on this page. Use the PRESENTER Remote app instead.');
+    }
+    ident.busy = false; saveIdent(); if(tab === 'identify') render();
+  }
+  function songBtn(x, star){
+    const b = h('button', 'item' + (star ? ' aiBest' : ''));
+    b.appendChild(h('span', 't', (star ? '★ ' : '') + x.title + (x.artist ? ' — ' + x.artist : '')));
+    b.appendChild(h('span', 'n', Math.round(x.confidence) + '%'));
+    b.disabled = ident.busy;
+    b.addEventListener('click', ()=> openSong(x.title + (x.artist ? ' — ' + x.artist : ''), x.artist));
+    return b;
+  }
+  function renderIdentify(main){
+    const grid = h('div', 'aiGrid'); main.appendChild(grid);
+
+    // LEFT: input (search, microphone, prompt). Model / API-key settings live on the computer only.
+    const L = h('div'); grid.appendChild(L);
+    const c1 = h('div', 'card'); c1.appendChild(h('div', 'lbl', 'Search'));
+    const q = h('input'); q.type = 'search'; q.placeholder = 'Song name or a lyric line…'; q.value = ident.q;
+    q.addEventListener('input', ()=>{ ident.q = q.value; });
+    q.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' && q.value.trim()) openSong(q.value.trim(), ''); });
+    c1.appendChild(q);
+    const go = h('button', 'small', '🔍 Search'); go.style.marginTop = '8px'; go.disabled = ident.busy;
+    go.addEventListener('click', ()=>{ if(q.value.trim()) openSong(q.value.trim(), ''); });
+    c1.appendChild(go); L.appendChild(c1);
+
+    const c2 = h('div', 'card'); c2.appendChild(h('div', 'lbl', 'Hum, sing or play'));
+    c2.appendChild(h('div', 'sub', '1–3 seconds near the phone'));
+    const secs = h('div', 'grid g4'); secs.style.marginTop = '8px';
+    [1,2,3].forEach(s=>{ const b = h('button', 'small', '🎤 ' + s + 's'); b.disabled = ident.busy; b.addEventListener('click', ()=>runIdentify(s)); secs.appendChild(b); });
+    c2.appendChild(secs); L.appendChild(c2);
+
+    const c3 = h('div', 'card'); c3.appendChild(h('div', 'lbl', 'Prompt (optional)'));
+    const pr = h('input'); pr.type = 'text'; pr.placeholder = 'e.g. Telugu lyrics, 4 lines per slide'; pr.value = ident.prompt;
+    pr.addEventListener('input', ()=>{ ident.prompt = pr.value; });
+    c3.appendChild(pr); L.appendChild(c3);
+
+    // RIGHT: AI output
+    const R = h('div'); grid.appendChild(R);
+    if(ident.msg) R.appendChild(h('div', 'empty', ident.msg));
+    if(ident.mode === 'deck' && ident.deck){
+      const d = ident.deck, head = h('div', 'card');
+      const row = h('div', 'aiRow');
+      const back = h('button', 'small', '← Back to Songs'); back.addEventListener('click', ()=>{ ident.mode = 'songs'; ident.addOpen = false; saveIdent(); render(); });
+      row.appendChild(back); head.appendChild(row);
+      head.appendChild(h('div', 'lbl', d.title + (d.artist ? ' — ' + d.artist : '')));
+      head.appendChild(h('div', 'sub', d.slides.length + ' slide' + (d.slides.length === 1 ? '' : 's') + (d.complete ? '' : ' · only part of the song was available') + ' · AI text can contain mistakes, check before going live'));
+      const load = h('button', 'golive', 'Load in Preview ▸'); load.style.marginTop = '10px';
+      load.addEventListener('click', ()=>{ send('aiDeck', { title:d.title, artist:d.artist, slides:d.slides }); toast('Sent to the computer'); });
+      head.appendChild(load);
+      R.appendChild(head);
+      const lp = document.createElement('details'); lp.className = 'card';
+      lp.appendChild(h('summary', null, 'Lyrics preview'));
+      lp.appendChild(h('div', 'aiSlide', d.slides.join('\n\n')));
+      R.appendChild(lp);
+      d.slides.forEach((t, i)=>{ const s = h('div', 'aiSlide', (i+1) + '\n' + t); R.appendChild(s); });
+      if(ident.addOpen){
+        const ta = h('textarea'); ta.placeholder = 'Text for the new slide'; R.appendChild(ta);
+        const ad = h('button', 'small', 'Add'); ad.style.marginTop = '8px';
+        ad.addEventListener('click', ()=>{ const t = ta.value.trim(); if(!t) return; d.slides.push(t); ident.addOpen = false; saveIdent(); render(); });
+        R.appendChild(ad);
+      } else {
+        const add = h('button', 'small', '+ Add Slide'); add.addEventListener('click', ()=>{ ident.addOpen = true; render(); }); R.appendChild(add);
+      }
+    } else {
+      if(ident.best){
+        const bc = h('div', 'card aiBest'); bc.appendChild(h('div', 'lbl', 'Identified track')); R.appendChild(bc);
+        R.appendChild(songBtn(ident.best, true));
+      }
+      if(ident.list.length){
+        const sc = h('div', 'lbl', 'Similar songs'); sc.style.margin = '6px 2px'; R.appendChild(sc);
+        ident.list.forEach(x=> R.appendChild(songBtn(x, false)));
+      }
+      if(!ident.best && !ident.list.length && !ident.msg) R.appendChild(h('div', 'empty', 'Search for a song or hum a few seconds. Results appear here.'));
+    }
+  }
+
+  function renderLibrary(main){
+    if(browsing){ return renderSlides(main); }
+    const q = h('input', 'search'); q.type = 'search'; q.placeholder = 'Search songs and items…'; q.value = filter;
+    q.addEventListener('input', ()=>{ filter = q.value; paint(); });
+    main.appendChild(q);
+    const box = h('div'); main.appendChild(box);
+    function paint(){
+      box.textContent = '';
+      const f = filter.trim().toLowerCase();
+      const list = S.items.filter(i=>!f || (i.title || '').toLowerCase().includes(f));
+      if(!list.length){ box.appendChild(h('div', 'empty', S.items.length ? 'No match.' : 'The library is empty.')); return; }
+      list.forEach(i=>{
+        const b = h('button', 'item' + (i.id === S.selectedItemId ? ' cur' : ''));
+        b.appendChild(h('span', 't', i.title || 'Untitled'));
+        b.appendChild(h('span', 'n', (i.n != null ? i.n + ' slides' : (i.type || ''))));
+        b.addEventListener('click', ()=>{ browsing = i.id; send('browse', { itemId:i.id }); render(); });
+        box.appendChild(b);
+      });
+    }
+    paint();
+  }
+
+  function renderSlides(main){
+    const item = S.items.find(i=>i.id === browsing);
+    const bar = h('div', 'bar');
+    const back = h('button', null, '‹ Library'); back.addEventListener('click', ()=>{ browsing = null; render(); });
+    bar.appendChild(back); bar.appendChild(h('div', 't', item ? item.title : '')); main.appendChild(bar);
+    if(!item){ main.appendChild(h('div', 'empty', 'This item no longer exists.')); return; }
+    if(S.selectedItemId !== browsing){ main.appendChild(h('div', 'empty', 'Loading slides…')); return; }
+    if(!S.slides.length){ main.appendChild(h('div', 'empty', 'No slides.')); return; }
+    S.slides.forEach((sl, idx)=>{
+      const isP = S.preview.itemId === browsing && S.preview.slideIndex === idx;
+      const isL = S.live.itemId === browsing && S.live.slideIndex === idx && !S.live.blank;
+      const row = h('div', 'slide' + (isL ? ' live' : isP ? ' prev' : ''));
+      const body = h('div', 'body');
+      const no = h('div', 'no', 'Slide ' + (idx + 1));
+      if(isP) no.appendChild(h('b', 'p', 'PREVIEW')); if(isL) no.appendChild(h('b', 'l', 'LIVE'));
+      body.appendChild(no); body.appendChild(h('div', 'tx', sl.text || '(empty)'));
+      body.addEventListener('click', ()=>send('stage', { itemId:browsing, slideIndex:idx }));
+      const edb = h('button', 'ed', '✏'); edb.setAttribute('aria-label', 'Edit slide ' + (idx + 1)); edb.addEventListener('click', ()=>{ openEditor(browsing, idx, sl.text || ''); send('stage', { itemId:browsing, slideIndex:idx }, true); });
+      const go = h('button', 'go', 'Go live ▸'); go.addEventListener('click', ()=>send('stageLive', { itemId:browsing, slideIndex:idx }));
+      row.appendChild(body); row.appendChild(edb); row.appendChild(go); main.appendChild(row);
+    });
+    main.appendChild(h('div', 'empty', 'Tap a slide to stage it in Preview, ✏ to edit it (Preview only). “Go live” sends it to the screen.'));
+  }
+
+  function renderWorkspace(main){
+    const w = S.workspace;
+    if(!w || !w.names || !w.names.length){ main.appendChild(h('div', 'empty', 'No saved workspace layouts yet. Save one on the computer first.')); return; }
+    main.appendChild(h('div', 'empty', 'Switch the layout shown on the computer:'));
+    w.names.forEach(n=>{
+      const b = h('button', 'ws' + (n === w.active ? ' act' : ''));
+      b.appendChild(h('span', null, n)); b.appendChild(h('span', null, n === w.active ? '● active' : ''));
+      b.addEventListener('click', ()=>send('workspace', { name:n }));
+      main.appendChild(b);
+    });
+  }
+
+  // ---------- slide editor (Preview only; Go live is the only way text reaches the Live screen) ----------
+  let ed = null, edTimer = null, edBusy = false, edDirty = false;
+  function openEditor(itemId, idx, text){
+    ed = { itemId:itemId, idx:idx, original:text };
+    $('eTitle').textContent = 'Edit slide ' + (idx + 1);
+    $('eText').value = text; $('editor').classList.remove('hidden'); setTimeout(()=>$('eText').focus(), 50);
+  }
+  async function pushEdit(){                       // one request at a time, always the newest text
+    if(!ed) return;
+    if(edBusy){ edDirty = true; return; }
+    edBusy = true;
+    do{ edDirty = false; await send('editSlide', { itemId:ed.itemId, slideIndex:ed.idx, text:$('eText').value }, true); }while(edDirty && ed);
+    edBusy = false;
+  }
+  async function flushEdit(){
+    clearTimeout(edTimer); edTimer = null;
+    await pushEdit();
+    while(edBusy) await new Promise(r=>setTimeout(r, 30));
+  }
+  $('eText').addEventListener('input', ()=>{ clearTimeout(edTimer); edTimer = setTimeout(pushEdit, 250); });
+  $('eDone').addEventListener('click', async ()=>{ await flushEdit(); ed = null; $('editor').classList.add('hidden'); });
+  $('eUndo').addEventListener('click', ()=>{ if(!ed) return; $('eText').value = ed.original; clearTimeout(edTimer); pushEdit(); });
+  $('eLive').addEventListener('click', async ()=>{ await flushEdit(); send('golive'); toast('Sent live'); });
+
+  // ---------- start ----------
+  (function init(){
+    const q = new URLSearchParams(location.search);
+    const isHttp = /^https?:$/.test(location.protocol);
+    const fresh = q.get('connect') === '1';               // opened from the QR code / app launcher: always start from the mode picker
+    try{ history.replaceState(null, '', location.pathname); }catch(e){}   // links never carry a password; keep the address bar clean anyway
+    let sess = null;
+    if(fresh){ try{ sessionStorage.removeItem('pr_sess'); }catch(e){} }
+    else { try{ sess = JSON.parse(sessionStorage.getItem('pr_sess') || 'null'); }catch(e){} }
+    const savedHost = LS('pr_host');
+    if(savedHost) $('hostIn').value = savedHost.replace(/^http:\/\//, '');
+    render();
+    // QR link: this page's own address first, then the other addresses the QR code listed.
+    const hostParam = normHost(q.get('host') || '');
+    const inApp = location.hostname === 'localhost' && !location.port;   // the copy packaged inside the Android app
+    const port = hostParam ? new URL(hostParam).port : (location.port || '8787');
+    const alts = (q.get('alt') || '').split(',').filter(Boolean).map(a=>normHost(a.includes(':') ? a : a + ':' + port));
+    const first = hostParam ? [hostParam] : (isHttp && !inApp ? [location.origin] : []);
+    if(savedHost && !fresh) first.push(savedHost);
+    const cands = first.concat(alts).filter((v, i, a)=> v && a.indexOf(v) === i);
+    if(!cands.length){ showConnect(''); return; }
+    lobbyConnect(cands, sess);
+  })();
+})();
+</script>
+</body>
+</html>

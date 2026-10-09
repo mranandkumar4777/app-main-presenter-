@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PRESENTER Remote</string>
+    <string name="title_activity_main">PRESENTER Remote</string>
+    <string name="package_name">com.p1.presenterremote</string>
+    <string name="custom_url_scheme">com.p1.presenterremote</string>
+</resources>
