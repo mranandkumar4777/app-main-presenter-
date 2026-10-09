@@ -23,7 +23,7 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install Dependencies and Sync Capacitor
+    - name: Install Dependencies & Sync Capacitor
       run: |
         npm install
         cd mobile
@@ -34,7 +34,7 @@ jobs:
       run: |
         cd mobile/android
         chmod +x gradlew
-        ./gradlew clean assembleDebug
+        ./gradlew clean assembleDebug -Pandroid.injected.signing.store.file=""
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
